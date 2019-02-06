@@ -1,0 +1,156 @@
+  PHACT Phreakers / Hackers / Anarchists / Cyberpunks / Technologists
+  Autor:ipwn
+  Tema:XSS
+  
+  -  o  que  é  que  significa xss?  xss é a sigla adoptada para as
+  palavras cross-site scripting(css) devido à confusão com  cascad-
+  ing style sheets(css(linguagem de estilo)) que define a forma co-
+  mo os documentos sao apresentados ao utilizador atraves  de  html
+  ou xml.
+  
+  -  o  que  é  xss?   xss é uma vulnerabilidade presente em muitas
+  aplicações web que faz com que seja possivel a um utilizador  mal
+  intencionado injectar/incluir codigo(html,javascript,vbscript,ac-
+  tiveX,flash) em paginas  web,  criando  assim  perigo  para  uti-
+  lizadores que visitam sites legitimos, algumas das suas possibil-
+  idades são: - roubo de cookies(session hijack) - bypass a contro-
+  los  de acesso(same origin policy,zone elevation) - redirect para
+  outros  sites(phishing,  browser  exploiting)  -  modificação  de
+  sites(deface)
+  
+  -  tipos  de xss existentes 
+  1)DOM-based (local xss) 
+  2)Non-Persistent (reflected) 
+  3)Persistent (stored)
+  
+  1) o que é o DOM?  DOM (Document Object Model(Modelo  de  Objetos
+  de  Documentos  em  português))  é uma plataforma e uma linguagem
+  neutra que permite a programas e scripts o acesso dinamico e  ac-
+  tualização de counteudo, estrutura e estilo dos documentos. o DOM
+  é normalmente usado em conjunto com o javascript,  mas  este  foi
+  concebido  de maneira a ser independente de qualquer linguagem de
+  programação, fazendo com que atraves da sua  API,  seja  possivel
+  representar  a  estrutura  de um documento html ou xml de maneira
+  simples.  Nesta FAQ todos os exemplos foram testados com as  mag-
+  ic_quotes  OFF  permitindo assim o uso de aspas, no php.ini podem
+  ser alteradas estas denifições.  1.1) Em que é consistem os  DOM-
+  based  xss?  normalmente uma vulnerabilidade de xss ocorre porque
+  não existe validação e filtração dos dados, isto faz com que seja
+  possivel  a um utilizador delitivo enviar uma URL especificamente
+  construida para enviar os dados maliciosos que depois é interpre-
+  tado  pela  aplicação  web  e  o  código  javascript é executado,
+  exigindo portanto uma comunicação com o  servidor,  e  ai  é  que
+  diferem os DOM-based xss, fazendo com que o payload dependa unica
+  e exclusivamente do DOM e não na resposta da  aplicação  web,  em
+  alguns  casos  é  possivel ainda explorar esta falha se os carac-
+  teres < e > forem dispensaveis.   nesta  FAQ  vou  deixar  alguns
+  codigos  apenas  como  titulo de exemplo.
+  POC que demonstra DOM-based xss:
+  ---  
+Código:
+  <script>
+  var inj = document.URL
+  inj = unescape(inj);
+  document.write(inj);
+  </script>
+
+  Requisição normal
+  http://127.0.0.1/xss/dom.html?inj=normaldata
+  Requisição maliciosa
+  http://127.0.0.1/xss/dom.html?inj=%3Cscript%3Ealert('im on logz')%3C/script%3E
+  Requisição maliciosa comprovando o uso da vulnerabilidade DOM
+  http://127.0.0.1/xss/dom.html?inj=normaldata#%3Cscript%3Ealert('there is no logz on webserver, this is local DOM!')%3C/script%3E
+  ---
+  
+  2)  o que são xss do tipo Non-Persistent ou reflected?  xss deste
+  tipo é muito frequente e normalmente implicam que o atacante  en-
+  vie  para a vitima, atraves de email por exemplo determinada URL,
+  esta pode estar obfuscada de maneira a impedir que seja detectada
+  e tem como finalidade o roubo de cookies(session hijacking).  
+  POC que demonstra xss reflectido:
+  ---
+ 
+Código:
+<html>
+  <body>
+  <form>
+  Enter your name: <input type="text" name="name">
+  <input type="submit">
+  <?php echo "<br />Hello "  .  $_GET['name']; ?>
+  </form>
+  </body>
+  </html>
+
+  Requisição normal
+  http://127.0.0.1/xss/xss_reflected.php?name=dewd
+  Requisição maliciosa fazendo uso de javascript
+  http://127.0.0.1/xss/xss_reflected.php?name=<script>alert('xss%20powah!')</script>
+  ---
+  
+  3) o que são xss do tipo persistent  (stored)?   xss  persistente
+  ocorre  por  norma em aplicações web que não filtram conteudo in-
+  serido num formulário que posteriormente vai ser visualizado, por
+  norma  as  aplicações  web susceptiveis a este tipo de xss são os
+  guestbooks e os forums, esta pode ser bastante delitiva devido ao
+  facto  de  o  atacante  poder alterar a pagina, redirecionar uti-
+  lizadores, inserir codigo malicioso,etc sem necessitar de  enviar
+  URL's  maliciosas para potenciais vitimas.  
+  POC que demonstra xss Persistent(stored):
+  ---
+Código:
+  <html>
+  <body>
+  <form>
+  Insere a tua mensagem: <input type="text" name="msg">
+  <input type="submit">
+  </form>
+  <?php
+    $fp = fopen('./texto.txt', 'a');
+    fwrite($fp, "{$_GET['msg']}<br />");
+    fclose($fp);
+  readfile('./texto.txt');
+  ?>
+  </body>
+  </html>
+
+  Requisição normal
+  http://127.0.0.1/xss/xss_stored.php?msg=hi
+  Requisição maliciosa
+  GET http://127.0.0.1/xss/xss_stored.php?msg=%3Cscript%3Ealert%28%27give+me+your+cookiez%21%27%29%3C%2Fscript%3E HTTP/1.1
+  Accept: image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, application/x-shockwave-flash, */*
+  Accept-Language: en-US
+  UA-CPU: x86
+  Accept-Encoding: gzip, deflate
+  User-Agent: Opera/9.51 (X11; FreeBSD 7.0-RELEASE i386; U; en)
+  Proxy-Connection: Keep-Alive
+  Host: 127.0.0.1
+  ---
+  
+  
+  - segurança PHP em relação à segurança e a boas praticas de  pro-
+  gramação   podem   ser   usadas   as   funções  htmlentities()  e
+  strip_tags() para filtrar o código.   deve  tambem  ser  usado  o
+  metodo  http POST ao inves do GET visto que por norma este metodo
+  oferece maior segurança devido ao facto da requisição URI não ser
+  um  recurso para aceder mas sim um script que interpreta os dados
+  enviados.
+  
+  - Considerações a ter em conta neste exemplo  foram  usados  pay-
+  loads  sem  obfuscação  alguns dos metodos que podem ser usados é
+  converter o texto ASCII para hexadecimal ou e fazer uso da função
+  javascript  String.fromCharCode  que tambem serve para casos onde
+  não  possam  ser  usadas  aspas.  na   pagina   web   do   Rsnake
+  http://ha.ckers.org/xss.html  podem  ser  encontrados exemplos de
+  payloads bem como codificadores/descodificadores  de  caracteres.
+  convem  tambem  salientar  que em browsers mais antigo é possivel
+  injectar codigo javascript em html tags e é possivel  tambem  in-
+  serir codigo javascript em imagens, aumentando assim a facilidade
+  e os targets.
+  
+  Nesta FAQ foram apenas referidos exemplos  bastante  simples  com
+  html  e  php  recorrendo apenas ao metodo http GET, convem tambem
+  salientar que ficheiros CHM se encontram  susceptiveis  a  explo-
+  ração.   Com  a  proliferação  da  web 2.0 ataques xss muito mais
+  sofisticados vão acontecer fazendo uso de AJAX que permite o  uso
+  de  GET  e  POST  requests, fazendo assim possivel o hijack quase
+  completo do browser(DOM hijack).
